@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from typing import List, Optional
+from pydantic import BaseModel
 import sqlite3
 import random
 
@@ -11,6 +12,25 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+
+# ==== Models ====
+
+class ActorCreate(BaseModel):
+    name: str
+
+class ProducerCreate(BaseModel):
+    name: str
+
+class MovieCreate(BaseModel):
+    title: str
+    producer_id: int
+    genre: Optional[str] = None
+    actor_ids: Optional[List[int]] = []
+    scandal_ids: Optional[List[int]] = []
+    base_budget: Optional[int] = None
+    base_prestige: Optional[int] = None
+    base_profit: Optional[int] = None
+    status: Optional[str] = "in production"
 
 @app.post("/movies/generate_random/")
 def generate_random_movie():
@@ -164,3 +184,115 @@ def list_producers(query: Optional[str] = Query(None, min_length=1)):
     conn.close()
 
     return [dict(p) for p in producers]
+
+# ==== New endpoints for full-stack create flows ====
+
+@app.post("/actors/")
+def create_actor(body: ActorCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO Actors (name) VALUES (?)", (body.name.strip(),))
+        actor_id = cur.lastrowid
+        conn.commit()
+        cur.execute("SELECT * FROM Actors WHERE actor_id = ?", (actor_id,))
+        row = cur.fetchone()
+        return dict(row)
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not create actor: {e}")
+    finally:
+        conn.close()
+
+@app.post("/producers/")
+def create_producer(body: ProducerCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("INSERT INTO Producers (name) VALUES (?)", (body.name.strip(),))
+        producer_id = cur.lastrowid
+        conn.commit()
+        cur.execute("SELECT * FROM Producers WHERE producer_id = ?", (producer_id,))
+        row = cur.fetchone()
+        return dict(row)
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not create producer: {e}")
+    finally:
+        conn.close()
+
+@app.get("/scandals/")
+def list_scandals(query: Optional[str] = Query(None, min_length=1)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        if query:
+            like = f"%{query}%"
+            cur.execute("SELECT * FROM Scandals WHERE description LIKE ? ORDER BY scandal_id DESC LIMIT 50", (like,))
+        else:
+            cur.execute("SELECT * FROM Scandals ORDER BY scandal_id DESC LIMIT 50")
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+@app.post("/movies/create/")
+def create_movie(body: MovieCreate):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Validate producer exists
+        cur.execute("SELECT 1 FROM Producers WHERE producer_id = ?", (body.producer_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=400, detail="Producer not found")
+
+        # Defaults
+        base_budget = body.base_budget if body.base_budget is not None else random.randint(1_000_000, 100_000_000)
+        base_prestige = body.base_prestige if body.base_prestige is not None else random.randint(1, 100)
+        base_profit = body.base_profit if body.base_profit is not None else random.randint(0, base_budget * 2)
+        status = body.status or "in production"
+
+        # Insert movie (genre is optional in schema; ignore if column not present)
+        try:
+            cur.execute(
+                """
+                INSERT INTO Movies (producer_id, title, genre, base_budget, base_prestige, base_profit, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (body.producer_id, body.title, body.genre, base_budget, base_prestige, base_profit, status),
+            )
+        except sqlite3.OperationalError:
+            # Fallback if Movies table has no genre column
+            cur.execute(
+                """
+                INSERT INTO Movies (producer_id, title, base_budget, base_prestige, base_profit, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (body.producer_id, body.title, base_budget, base_prestige, base_profit, status),
+            )
+        movie_id = cur.lastrowid
+
+        # Assign cast
+        for aid in (body.actor_ids or []):
+            cur.execute("SELECT 1 FROM Actors WHERE actor_id = ?", (aid,))
+            if cur.fetchone():
+                cur.execute("INSERT INTO Movie_Cast (movie_id, actor_id, role) VALUES (?, ?, ?)", (movie_id, aid, "Cast"))
+
+        # Assign scandals
+        for sid in (body.scandal_ids or []):
+            cur.execute("SELECT 1 FROM Scandals WHERE scandal_id = ?", (sid,))
+            if cur.fetchone():
+                cur.execute("INSERT INTO Movie_Scandal (movie_id, scandal_id) VALUES (?, ?)", (movie_id, sid))
+
+        conn.commit()
+
+        cur.execute("SELECT * FROM Movies WHERE movie_id = ?", (movie_id,))
+        movie = cur.fetchone()
+        return {"movie_id": movie_id, **dict(movie)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not create movie: {e}")
+    finally:
+        conn.close()

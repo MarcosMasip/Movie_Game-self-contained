@@ -16,6 +16,7 @@ export default function CreateMovieGUI() {
   const [movies, setMovies] = useState([]);
   const [actors, setActors] = useState([]);
   const [producers, setProducers] = useState([]);
+  const [scandals, setScandals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,8 +35,9 @@ export default function CreateMovieGUI() {
   // Initial load
   useEffect(() => {
     refreshMovies();
-    fetchActors();
-    fetchProducers();
+  fetchActors();
+  fetchProducers();
+  fetchScandals();
   }, []);
 
   // Searches
@@ -83,6 +85,16 @@ export default function CreateMovieGUI() {
     }
   }
 
+  async function fetchScandals(query) {
+    try {
+      const url = query ? `/scandals/?query=${encodeURIComponent(query)}` : "/scandals/";
+      const res = await axios.get(url);
+      setScandals(res.data || []);
+    } catch {
+      setScandals([]);
+    }
+  }
+
   async function generateRandomMovie() {
     try {
       setActionMsg("");
@@ -104,6 +116,58 @@ export default function CreateMovieGUI() {
       setSelectedMovie(res.data);
     } catch (e) {
       setSelectedMovie({ error: "Failed to load movie details." });
+    }
+  }
+
+  // Quick create helpers
+  const [newActor, setNewActor] = useState("");
+  const [newProducer, setNewProducer] = useState("");
+  const [createTitle, setCreateTitle] = useState("");
+  const [createGenre, setCreateGenre] = useState("");
+  const [createProducerId, setCreateProducerId] = useState("");
+  const [createActorIds, setCreateActorIds] = useState([]);
+  const [createScandalIds, setCreateScandalIds] = useState([]);
+
+  async function addActor() {
+    const name = newActor.trim();
+    if (!name) return;
+    try {
+      await axios.post("/actors/", { name });
+      setNewActor("");
+      fetchActors();
+    } catch (e) {
+      setActionMsg("Failed to add actor");
+    }
+  }
+
+  async function addProducer() {
+    const name = newProducer.trim();
+    if (!name) return;
+    try {
+      await axios.post("/producers/", { name });
+      setNewProducer("");
+      fetchProducers();
+    } catch (e) {
+      setActionMsg("Failed to add producer");
+    }
+  }
+
+  async function createMovie() {
+    try {
+      const payload = {
+        title: createTitle || `Manual_${Date.now()}`,
+        genre: createGenre || undefined,
+        producer_id: Number(createProducerId),
+        actor_ids: createActorIds.map(Number),
+        scandal_ids: createScandalIds.map(Number),
+      };
+      const res = await axios.post("/movies/create/", payload);
+      setActionMsg(`Created movie #${res.data.movie_id}`);
+      setCreateTitle(""); setCreateGenre(""); setCreateProducerId(""); setCreateActorIds([]); setCreateScandalIds([]);
+      await refreshMovies();
+      await openMovieDetails(res.data.movie_id);
+    } catch (e) {
+      setActionMsg(e?.response?.data?.detail || "Failed to create movie");
     }
   }
 
@@ -166,6 +230,10 @@ export default function CreateMovieGUI() {
               onChange={(e) => setActorQuery(e.target.value)}
             />
           </div>
+          <div className="card__header">
+            <input className="input" placeholder="Quick add actor…" value={newActor} onChange={(e)=>setNewActor(e.target.value)} />
+            <button className="btn" onClick={addActor}>Add</button>
+          </div>
           <ul className="list">
             {actors.map((a) => (
               <li key={a.actor_id} className="list__item">
@@ -186,6 +254,10 @@ export default function CreateMovieGUI() {
               value={producerQuery}
               onChange={(e) => setProducerQuery(e.target.value)}
             />
+          </div>
+          <div className="card__header">
+            <input className="input" placeholder="Quick add producer…" value={newProducer} onChange={(e)=>setNewProducer(e.target.value)} />
+            <button className="btn" onClick={addProducer}>Add</button>
           </div>
           <ul className="list">
             {producers.map((p) => (
@@ -234,6 +306,34 @@ export default function CreateMovieGUI() {
           </div>
         )}
       </aside>
+
+      <section className="create card" style={{ marginTop: 12 }}>
+        <div className="card__header">
+          <h2>Create Movie (manual)</h2>
+        </div>
+        <div style={{ padding: 12, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <input className="input" placeholder="Title" value={createTitle} onChange={e=>setCreateTitle(e.target.value)} />
+          <input className="input" placeholder="Genre (optional)" value={createGenre} onChange={e=>setCreateGenre(e.target.value)} />
+          <select className="input" value={createProducerId} onChange={e=>setCreateProducerId(e.target.value)}>
+            <option value="">Select Producer</option>
+            {producers.map(p => <option key={p.producer_id} value={p.producer_id}>{p.name}</option>)}
+          </select>
+
+          <select className="input" multiple value={createActorIds} onChange={(e)=>setCreateActorIds([...e.target.selectedOptions].map(o=>o.value))}>
+            <option disabled>— Select Actors —</option>
+            {actors.map(a => <option key={a.actor_id} value={a.actor_id}>{a.name}</option>)}
+          </select>
+
+          <select className="input" multiple value={createScandalIds} onChange={(e)=>setCreateScandalIds([...e.target.selectedOptions].map(o=>o.value))}>
+            <option disabled>— Select Scandals —</option>
+            {scandals.map(s => <option key={s.scandal_id} value={s.scandal_id}>{s.description}</option>)}
+          </select>
+
+          <div>
+            <button className="btn btn--primary" onClick={createMovie} disabled={!createProducerId}>Create Movie</button>
+          </div>
+        </div>
+      </section>
 
       {error && <div className="error fixed-error">{error}</div>}
     </div>
