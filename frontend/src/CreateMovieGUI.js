@@ -36,7 +36,6 @@ export default function CreateMovieGUI() {
     refreshMovies();
     fetchActors();
     fetchProducers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Searches
