@@ -1,14 +1,46 @@
-/* Minimal styles for CRA app; Tailwind directives intentionally omitted to avoid PostCSS setup */
-html, body, #root {
-  height: 100%;
-}
+/* Minimal CSS (no Tailwind) to make the UI appealing */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
 body {
   margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  color: #111827;
+  background: #f3f4f6;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
+.app { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.app__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.app__header h1 { margin: 0; font-size: 24px; }
+.app__actions { display: flex; gap: 12px; align-items: center; }
+.app__msg { color: #065f46; font-size: 14px; }
+
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+.card__header { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+.card__header h2 { flex: 0 0 auto; margin: 0; font-size: 18px; }
+
+.list { list-style: none; margin: 0; padding: 8px; }
+.list__item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border-bottom: 1px solid #f3f4f6; cursor: pointer; }
+.list__item:hover { background: #f9fafb; }
+.list__title { font-weight: 600; }
+.list__meta { color: #6b7280; font-size: 12px; }
+.list--compact .list__item { padding: 6px 8px; }
+
+.details { margin-top: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+.details h2 { margin-top: 0; }
+.details__content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.kv { display: flex; gap: 8px; }
+.k { width: 120px; color: #6b7280; }
+.v { font-weight: 600; }
+
+.input { flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.btn { padding: 8px 12px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+.btn:hover { background: #f9fafb; }
+.btn--primary { background: #2563eb; color: #fff; border-color: #1d4ed8; }
+.btn--primary:hover { background: #1d4ed8; }
+.btn--sm { font-size: 12px; padding: 6px 8px; }
+
+.muted { color: #6b7280; padding: 8px; }
+.empty { margin: 16px 0; padding: 12px; background: #ecfeff; border: 1px solid #a5f3fc; color: #155e75; border-radius: 8px; }
+.error { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; padding: 8px; border-radius: 6px; }
+.fixed-error { position: fixed; bottom: 12px; right: 12px; }
