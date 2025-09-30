@@ -8,7 +8,7 @@ from fastapi import APIRouter
 
 app = FastAPI()
 
-DATABASE = r"C:\Users\Couxh Family\Desktop\Movie_Game\backend\Movies_Game_table_2.db"
+DATABASE = "Movies_Game_Table_2.db"
 
 # === Models ===
 

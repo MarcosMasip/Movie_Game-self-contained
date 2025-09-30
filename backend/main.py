@@ -5,7 +5,7 @@ import random
 
 app = FastAPI()
 
-DATABASE = r"C:\Users\Couxh Family\Desktop\Movie_Game\backend\Movies_Game_table_2.db"
+DATABASE = "Movies_Game_Table_2.db"
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
