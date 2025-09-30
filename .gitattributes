@@ -1,2 +1,14 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# --- GitHub Linguist configuration ---
+# Goal: Make Python the primary language shown on GitHub without changing
+# any code or behavior. We exclude JS-heavy paths from language detection.
+# This only affects GitHub’s language stats bar; it does not change files,
+# builds, searchability, or how the app runs locally or in CI.
+
+# Exclude the frontend (React/Tailwind) sources from language detection
+frontend/src/** linguist-detectable=false
+
+# Exclude the duplicate root JS sources from language detection
+src/** linguist-detectable=false
